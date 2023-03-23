@@ -1,0 +1,7 @@
+# script for finetuning a BERT transformer on a final classifier layer
+torch>=1.1.0
+tqdm
+pandas
+numpy
+transformers
+scikit-learn
