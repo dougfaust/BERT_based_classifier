@@ -14,16 +14,11 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 ##########
 # params
 ##########
-TRAINING_DATA = '/home/doug/Documents/pytorch_projects/BERT_finetune/smile-annotations-final.csv'
-MODEL_DIR = '/home/doug/Documents/pytorch_projects/BERT_finetune/Models'
-TEST_FRACTION = 0.15
-TRAIN_TEST_SPLIT_SEED = 1234
-TRAIN_BATCH_SIZE = 8  # cpu maybe 4, good gpu 32
+from config import CONFIG
 
-EPOCHS = 10
-LEARNING_RATE = 1e-5 # BERT paper says 2e-5 to 5e-5
-EPS = 1e-8
-
+##########
+# methods
+##########
 def preprocess_data(data_path):
 
     df = pd.read_csv(
@@ -112,18 +107,21 @@ def load_model_from_file(model_path):
 
     return model
 
+##########
+# main script
+##########
 if __name__ == '__main__':
 
     # load and clean data
-    raw_data_file = TRAINING_DATA
+    raw_data_file = CONFIG['model']['TRAINING_DATA']
     df, label_dict = preprocess_data(raw_data_file)
 
     # choosing a stratified split because of the very unbalanced class
     X_train, X_val, y_train, y_val = train_test_split(
         df.index.values,
         df.label.values,
-        test_size=TEST_FRACTION,
-        random_state=TRAIN_TEST_SPLIT_SEED,
+        test_size=CONFIG['model_selection']['TEST_FRACTION'],
+        random_state=CONFIG['model_selection']['TRAIN_TEST_SPLIT_SEED'],
         stratify=df.label.values
     )
 
@@ -187,26 +185,26 @@ if __name__ == '__main__':
     dataloader_train = DataLoader(
         dataset_train,
         sampler=RandomSampler(dataset_train),
-        batch_size=TRAIN_BATCH_SIZE
+        batch_size=CONFIG['train']['TRAIN_BATCH_SIZE']
     )
 
     dataloader_val = DataLoader(
         dataset_val,
         sampler=RandomSampler(dataset_val),
-        batch_size=4*TRAIN_BATCH_SIZE # validation requires much less computation
+        batch_size=4*CONFIG['train']['TRAIN_BATCH_SIZE'] # validation requires much less computation
     )
 
     # set up the optimizer and scheduler
     optimizer = AdamW(
         model.parameters(),
-        lr=LEARNING_RATE,
-        eps=EPS
+        lr=CONFIG['train']['LEARNING_RATE'],
+        eps=CONFIG['train']['EPS']
     )
 
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=0,
-        num_training_steps=len(dataloader_train)*EPOCHS
+        num_training_steps=len(dataloader_train)*CONFIG['train']['EPOCHS']
     )
 
     # creating our training loop
@@ -219,10 +217,8 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
-    ##########
     # training loop
-    ##########
-    for epoch in tqdm(range(1, EPOCHS + 1)):
+    for epoch in tqdm(range(1, CONFIG['train']['EPOCHS'] + 1)):
 
         model.train()
 
